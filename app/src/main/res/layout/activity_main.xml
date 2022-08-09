@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.appcompat.widget.LinearLayoutCompat xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    tools:context=".MainActivity">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="PhotoFirestore"
+        android:textSize="30sp"
+        android:textStyle="bold"
+        android:layout_gravity="center"
+        android:layout_marginTop="10dp"
+
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:orientation="horizontal">
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btnAdd"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Add PIC"
+            android:onClick="takePicture"
+            />
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btnRead"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:onClick="readElements"
+            android:text="Read" />
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btnUpdate"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:onClick="Search"
+            android:text="QUERY" />
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btnEndSession"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="End Session"
+            android:onClick="logout"
+            />
+
+
+
+    </LinearLayout>
+
+
+    <androidx.constraintlayout.utils.widget.ImageFilterView
+        android:id="@+id/camarapic"
+        android:layout_width="150dp"
+        android:layout_height="150dp"
+        android:layout_marginTop="30dp"
+        android:layout_marginBottom="20dp"
+        android:layout_gravity="center"/>
+
+    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+        android:id="@+id/pullToRefresh"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+    <!-- LongClickable es necesario para activar el LongClick-->
+    <ListView
+        android:id="@+id/lista"
+        android:divider="@android:color/transparent"
+        android:dividerHeight="10.0sp"
+        android:longClickable="true"
+        android:layout_width="match_parent"
+        android:layout_height="fill_parent"/>
+    <!--You should never set the height of a ListView to wrap_content. Either set the height to fill_parent-->
+
+    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+
+
+</androidx.appcompat.widget.LinearLayoutCompat>

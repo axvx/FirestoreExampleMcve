@@ -7,7 +7,6 @@ public class Member {
     private String image;
 
 
-
     public String getImage() {
         return image;
     }
@@ -29,11 +28,11 @@ public class Member {
         return descripcion;
     }
 
-    public Member(Long anio, String titulo, String descripcion,String image) {
+    public Member(Long anio, String titulo, String descripcion, String image) {
         this.anio = anio;
         this.titulo = titulo;
         this.descripcion = descripcion;
-        this.image=image;
+        this.image = image;
     }
 
     public Member() {

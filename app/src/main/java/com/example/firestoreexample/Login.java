@@ -18,11 +18,10 @@ public class Login extends AppCompatActivity {
     //RC_SIGN in is the request code
     // you will assign for starting the new activity
 
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        
+
         setContentView(R.layout.activity_login);
 
 

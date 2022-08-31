@@ -13,6 +13,8 @@
         android:scaleType="center"
         android:background="#FFFFBB33"
         android:contentDescription="@string/app_name" />
+
+
     <EditText
         android:id="@+id/dlgTitulo"
         android:inputType="textEmailAddress"
@@ -29,12 +31,24 @@
         android:id="@+id/dlgFecha"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
         android:layout_marginLeft="4dp"
+        android:layout_marginTop="4dp"
         android:layout_marginRight="4dp"
         android:layout_marginBottom="16dp"
+        android:fontFamily="sans-serif"
         android:hint="Fecha"
-        android:fontFamily="sans-serif" />
+        android:visibility="gone" />
+
+    <androidx.appcompat.widget.AppCompatRatingBar
+        android:id="@+id/rati"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        style="?android:attr/ratingBarStyleIndicator"
+        android:layout_gravity="center"
+        android:rating="1"
+        android:numStars="5"
+        android:stepSize="0.5"
+        android:isIndicator="false" />
 
 
 </androidx.appcompat.widget.LinearLayoutCompat>

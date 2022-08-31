@@ -20,6 +20,7 @@ import android.graphics.drawable.BitmapDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.StrictMode;
 import android.provider.MediaStore;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -29,6 +30,7 @@ import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.ListView;
+import android.widget.RatingBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -41,6 +43,7 @@ import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.Query;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.QuerySnapshot;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
@@ -69,6 +72,7 @@ public class MainActivity extends AppCompatActivity {
 
     private static final int CAMERA_PIC_REQUEST = 1111;
     private ImageView mImage;
+    private RatingBar mRating;
 
 
     private static ArrayList<Member> mArrayList = new ArrayList<>(); //ArrayList de objetos de tipo Member
@@ -89,16 +93,40 @@ public class MainActivity extends AppCompatActivity {
         mStorageRef = FirebaseStorage.getInstance().getReference();
         mImage = (ImageView) findViewById(R.id.camarapic);
 
+
+        //Un clic para actualizar algun elemento de la lista?
         notificationListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
-            public void onItemClick(AdapterView<?> parent, View view, int position,
-                                    long id) {
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
 
                 Member mycursor = (Member) parent.getItemAtPosition(position);
 
+                RatingBar rat = (RatingBar) view.findViewById(R.id.rati);
 
-                //  Toast.makeText(getApplicationContext(), mycursor.getFirst() + "   ", Toast.LENGTH_LONG).show();
+                Map<String, Object> user = new HashMap<>();
+                user.put("titulo", mycursor.getTitulo());
+                user.put("descripcion", mycursor.getDescripcion());
+                user.put("anio", rat.getRating());
+                user.put("image", mycursor.getImage());
+
+                Toast.makeText(getApplicationContext(), mycursor.getTitulo() + "   ", Toast.LENGTH_LONG).show();
+
+                FirebaseFirestore db = FirebaseFirestore.getInstance();
+                db.collection("users").whereEqualTo("titulo", mycursor.getTitulo()).get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
+                    @Override
+                    public void onComplete(@NonNull Task<QuerySnapshot> task) {
+
+
+                        for (QueryDocumentSnapshot document : task.getResult()) {
+                            Log.d(TAG, document.getId() + " => " + document.getData());
+                            db.collection("users").document(document.getId()).update(user);
+                            readElements(getCurrentFocus());
+                        }
+                    }
+                });
+
             }
+
         });
 
 
@@ -130,22 +158,27 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+
+        //Evento para paginar resultados el ListView cada que se hace un Swipe
         final SwipeRefreshLayout pullToRefresh = findViewById(R.id.pullToRefresh);
         pullToRefresh.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
             @Override
             public void onRefresh() {
-                print("pull");
+                // print("pull");
 
+                pagination(getCurrentFocus());
+                pullToRefresh.setRefreshing(false);
 
-                        pagination(getCurrentFocus());
-                        pullToRefresh.setRefreshing(false);
-
-                    }
-
-
-
+            }
         });
 
+        mImage.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+
+                mImage.setVisibility(View.GONE);
+            }
+        });
         readElements(getCurrentFocus());
 
     }
@@ -155,32 +188,29 @@ public class MainActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == CAMERA_PIC_REQUEST) {
 
+
             //Obtener la fecha para usarla como nombre de archivo
             SimpleDateFormat timeStampFormat = new SimpleDateFormat("yyyyMMddHHmmssSS");
             Date myDate = new Date();
             filename = timeStampFormat.format(myDate);
 
-            Bitmap thumbnail = (Bitmap) data.getExtras().get("data");
 
+            //Decodificar la imagen que fue guardada en el directorio DCIM
+            Bitmap thumbnail = BitmapFactory.decodeFile(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM).getPath() + "/" + "kit" + ".jpg");
 
-            //Bitmap storedBitmap = BitmapFactory.decodeByteArray(data, 0, data.length, null);
+            mImage.setVisibility(View.VISIBLE);
+
+            //Rotar la imagen
             Matrix mat = new Matrix();
-            mat.postRotate(90);  // angle is the desired angle you wish to rotate
+            mat.postRotate(90);  // Angulo deseado
             thumbnail = Bitmap.createBitmap(thumbnail, 0, 0, thumbnail.getWidth(), thumbnail.getHeight(), mat, true);
-
-
-
-
             mImage.setImageBitmap(thumbnail);
             ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-            thumbnail.compress(Bitmap.CompressFormat.PNG, 100, bytes);
-            File file = new File(Environment.getExternalStorageDirectory() + File.separator + "image.jpg");
-            // Salvar el archivo en Storage al vuelo
 
+            //Subir la imagen a Firebase Storage
+            fnam = uploadFiletoFirestore(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM).getPath() + "/" + "kit" + ".jpg", filename);
 
-            fnam = UploadToFirestore(bytes.toByteArray(), filename);
-
-            // get prompts.xml view
+            //Generar el dialog box para etiquetar la imagen
             LayoutInflater li = LayoutInflater.from(this);
             View promptsView = li.inflate(R.layout.dialog_add, null);
             AlertDialog.Builder dialog = new AlertDialog.Builder(MainActivity.this);
@@ -193,22 +223,22 @@ public class MainActivity extends AppCompatActivity {
             final EditText dlgTitulo = (EditText) promptsView.findViewById(R.id.dlgTitulo);
             final EditText dlgDescripcion = (EditText) promptsView.findViewById(R.id.dlgDescripcion);
             final EditText dlgFecha = (EditText) promptsView.findViewById(R.id.dlgFecha);
+            final RatingBar dlgRating = (RatingBar) promptsView.findViewById(R.id.rati);
 
 
-            // set dialog message
+            //Iniciar dialog box
             alertDialogBuilder
                     .setCancelable(false)
                     .setPositiveButton("OK",
                             new DialogInterface.OnClickListener() {
                                 public void onClick(DialogInterface dialog, int id) {
-                                    // get user input and set it to result
-                                    // edit text
+
                                     print(dlgTitulo.getText().toString());
                                     Titulo = dlgTitulo.getText().toString();
                                     Descripcion = dlgDescripcion.getText().toString();
-                                    Fecha = Integer.parseInt(dlgFecha.getText().toString());
+                                    Fecha = (int) dlgRating.getRating();
 
-
+                                    //Agregar valores y actualizar
                                     addElements();
                                     readElements(getCurrentFocus());
 
@@ -221,27 +251,43 @@ public class MainActivity extends AppCompatActivity {
                                 }
                             });
 
-            // create alert dialog
+            //Crear alerta
             AlertDialog alertDialog = alertDialogBuilder.create();
 
-            // show it
+            //Mostrar dialog box
             alertDialog.show();
 
-            /*try {
-                file.createNewFile();
-                FileOutputStream fo = new FileOutputStream(file);
-                fo.write(bytes.toByteArray());
-                fo.close();
-            } catch (IOException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-            }*/
+
         }
     }
 
+    private String uploadFiletoFirestore(String File, String remotefilename) {
 
+        final String[] link = new String[1];
+        Uri file = Uri.fromFile(new File(File));
+        StorageReference sr = mStorageRef.child("images/" + remotefilename + ".jpg");
+        UploadTask uploadTask = sr.putFile(file);
+
+        //Registar observers para notificar si el upload falla
+        uploadTask.addOnFailureListener(new OnFailureListener() {
+            @Override
+            public void onFailure(@NonNull Exception exception) {
+
+            }
+        }).addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
+            @Override
+            public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
+                // taskSnapshot.getMetadata() contains file metadata such as size, content-type, etc.
+
+                fnam = sr.toString(); //Obtener path tipo gs:// para la imagen guardada
+            }
+        });
+        return link[0];
+    }
+
+    //Funcion para rotar una imagen al vuelo
     private byte[] rotateImage(byte[] data, int angle) {
-        Log.d("labot_log_info","CameraActivity: Inside rotateImage");
+        Log.d("labot_log_info", "CameraActivity: Inside rotateImage");
         Bitmap bmp = BitmapFactory.decodeByteArray(data, 0, data.length, null);
         Matrix mat = new Matrix();
         mat.postRotate(angle);
@@ -251,11 +297,18 @@ public class MainActivity extends AppCompatActivity {
         return stream.toByteArray();
     }
 
+
     public void takePicture(View v) {
-        File file = new File(Environment.getExternalStorageDirectory().getPath() + "/Images/" + "kit" + ".jpg");
+        //Instrucciones necesarias para poder escribir en DCIM
+        StrictMode.VmPolicy.Builder builder = new StrictMode.VmPolicy.Builder();
+        StrictMode.setVmPolicy(builder.build());
+        //Path donde deseamos guardar la imagen
+        File file = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM).getPath() + "/" + "kit" + ".jpg");
         Uri imageUri = Uri.fromFile(file);
         //Activar la camara
         Intent intent = new Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE);
+        intent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri); //Guardar la imagen con la calidad necesaria
+
         startActivityForResult(intent, CAMERA_PIC_REQUEST);
 
 
@@ -327,26 +380,23 @@ public class MainActivity extends AppCompatActivity {
 
 
                             runOnUiThread(new Runnable() {
-                                              @Override
-                                              public void run() {
-                                                  mArrayList.clear();
+                                @Override
+                                public void run() {
+                                    mArrayList.clear();
 
-                                                  // Agregar valores a la arrayList
-                                                  mArrayList.addAll(types);
-                                                  //Relacionar ListView con el adaptador y la lista de elementos que se obtienen de la lectura
-                                                  ListView mMembersListView = (ListView) findViewById(R.id.lista);
+                                    // Agregar valores a la arrayList
+                                    mArrayList.addAll(types);
+                                    //Relacionar ListView con el adaptador y la lista de elementos que se obtienen de la lectura
+                                    ListView mMembersListView = (ListView) findViewById(R.id.lista);
 
-                                                  mMembersAdapter = new MemberAdapter(MainActivity.this, mArrayList);
-                                                  mMembersListView.setAdapter(mMembersAdapter);
-                                                  mMembersAdapter.notifyDataSetChanged();
+                                    mMembersAdapter = new MemberAdapter(MainActivity.this, mArrayList);
+                                    mMembersListView.setAdapter(mMembersAdapter);
+                                    mMembersAdapter.notifyDataSetChanged();
 
-                                                  Log.d(TAG, "onSuccess: " + mArrayList);
+                                    Log.d(TAG, "onSuccess: " + mArrayList);
 
-                                              }
-                                          });
-
-
-
+                                }
+                            });
 
 
                         }
@@ -385,6 +435,7 @@ public class MainActivity extends AppCompatActivity {
 
         final EditText dlgTitulo = (EditText) promptsView.findViewById(R.id.dlgTitulo);
         final EditText dlgFecha = (EditText) promptsView.findViewById(R.id.dlgFecha);
+        final RatingBar dlgRating = (RatingBar) promptsView.findViewById(R.id.rati);
 
 
         // set dialog message
@@ -397,10 +448,10 @@ public class MainActivity extends AppCompatActivity {
                                 // edit text
                                 print(dlgTitulo.getText().toString());
                                 Titulo = dlgTitulo.getText().toString();
-                                Fecha = Integer.parseInt(dlgFecha.getText().toString());
+                                Fecha = (int) dlgRating.getRating();
 
                                 //compQuery(getCurrentFocus());
-                                lastResult=null;
+                                lastResult = null;
                                 pagination(getCurrentFocus());
 
                             }
@@ -428,10 +479,10 @@ public class MainActivity extends AppCompatActivity {
         FirebaseFirestore db = FirebaseFirestore.getInstance();
 
         //By default elements are orded ascendenttly
-        db.collection("users")
-                .whereEqualTo("titulo", Titulo)
-                .whereGreaterThanOrEqualTo("anio", Fecha)
-                .orderBy("anio", Query.Direction.ASCENDING).get()
+            db.collection("users")
+                    .whereEqualTo("titulo", Titulo)
+                    .whereGreaterThanOrEqualTo("anio", Fecha)
+                    .orderBy("anio", Query.Direction.ASCENDING).get()
                 .addOnSuccessListener(new OnSuccessListener<QuerySnapshot>() {
                     @Override
                     public void onSuccess(QuerySnapshot documentSnapshots) {
@@ -514,8 +565,6 @@ public class MainActivity extends AppCompatActivity {
         }
 
 
-
-
         //By default elements are orded ascendenttly
         query.get()
                 .addOnSuccessListener(new OnSuccessListener<QuerySnapshot>() {
@@ -544,17 +593,17 @@ public class MainActivity extends AppCompatActivity {
                                 @Override
                                 public void run() {
                                     mArrayList.clear();
-                            // Agregar valores a la arrayList
-                            mArrayList.addAll(types);
-                            //Relacionar ListView con el adaptador y la lista de elementos que se obtienen de la lectura
-                            ListView mMembersListView = (ListView) findViewById(R.id.lista);
+                                    // Agregar valores a la arrayList
+                                    mArrayList.addAll(types);
+                                    //Relacionar ListView con el adaptador y la lista de elementos que se obtienen de la lectura
+                                    ListView mMembersListView = (ListView) findViewById(R.id.lista);
 
-                            mMembersAdapter = new MemberAdapter(MainActivity.this, mArrayList);
-                            mMembersListView.setAdapter(mMembersAdapter);
+                                    mMembersAdapter = new MemberAdapter(MainActivity.this, mArrayList);
+                                    mMembersListView.setAdapter(mMembersAdapter);
 
-                            Log.d(TAG, "onSuccess: " + mArrayList);
-//mMembersAdapter.clear();
-                            mMembersAdapter.notifyDataSetChanged();
+                                    Log.d(TAG, "onSuccess: " + mArrayList);
+                                    //mMembersAdapter.clear();
+                                    mMembersAdapter.notifyDataSetChanged();
                                 }
                             });
 
@@ -570,11 +619,10 @@ public class MainActivity extends AppCompatActivity {
                             index++;
                         }
 
-                        if(documentSnapshots.size()>0){
-                            lastResult=documentSnapshots.getDocuments().get(documentSnapshots.size()-1);
+                        if (documentSnapshots.size() > 0) {
+                            lastResult = documentSnapshots.getDocuments().get(documentSnapshots.size() - 1);
 
                         }
-
 
 
                     }
@@ -592,6 +640,10 @@ public class MainActivity extends AppCompatActivity {
 
 
         FirebaseFirestore db = FirebaseFirestore.getInstance();
+
+
+
+
 
         //By default elements are orded ascendenttly
         db.collection("users").whereEqualTo("titulo", FirstName).

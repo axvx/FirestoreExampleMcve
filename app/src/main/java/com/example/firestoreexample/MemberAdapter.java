@@ -10,6 +10,7 @@ import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.RatingBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -45,7 +46,16 @@ public class MemberAdapter extends ArrayAdapter<Member> {
     @Override
     public View getView(int position, View convertView, ViewGroup parent) {
 
-        //Referencias Firebase Storage
+        //Referencias Firebase
+
+
+
+
+
+        
+
+
+
         mStorageRef = FirebaseStorage.getInstance().getReference();
         FirebaseStorage storage = FirebaseStorage.getInstance();
 
@@ -60,9 +70,26 @@ public class MemberAdapter extends ArrayAdapter<Member> {
         TextView fechaTextView = (TextView) convertView.findViewById(R.id.txtfecha);
         TextView DescripcionTextView = (TextView) convertView.findViewById(R.id.txtDescripcion);
         TextView TituloTextView = (TextView) convertView.findViewById(R.id.txtTitulo);
+        RatingBar ratingBar = (RatingBar) convertView.findViewById(R.id.rati);
 
 
         imagenLista = (ImageView) convertView.findViewById(R.id.imagen_lista);
+
+        imagenLista.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                // Toast.makeText(getContext(),"ss",Toast.LENGTH_LONG).show();
+            }
+        });
+
+
+        ratingBar.setOnRatingBarChangeListener(new RatingBar.OnRatingBarChangeListener() {
+            @Override
+            public void onRatingChanged(RatingBar ratingBar, float rating, boolean fromUser) {
+                //     Toast.makeText(getContext(),String.valueOf(rating),Toast.LENGTH_LONG).show();
+
+            }
+        });
 
         //Obtener la posicion
         Member member = getItem(position);
@@ -71,6 +98,7 @@ public class MemberAdapter extends ArrayAdapter<Member> {
         fechaTextView.setText(member.getAnio().toString());
         DescripcionTextView.setText(member.getDescripcion());
         TituloTextView.setText(member.getTitulo());
+        ratingBar.setRating(member.getAnio());
 
         //Mostrar y cargar imagenes de Storage usando Glide
         StorageReference storageRef = storage.getReferenceFromUrl(member.getImage());
@@ -79,7 +107,6 @@ public class MemberAdapter extends ArrayAdapter<Member> {
 
         return convertView;
     }
-
 
 
 }
